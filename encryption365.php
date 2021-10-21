@@ -412,7 +412,7 @@ class Certificate {
     }
 
     private static function issueCert($host) { // 轮询证书签发并存储
-        $info = Stoarge::getInfo($host);
+        $info = Storage::getInfo($host);
         $vendorId = $info['vendorId'];
         $domains = $info['domains'];
         $certInfo = self::waitIssued($vendorId);
@@ -483,9 +483,9 @@ class Certificate {
     }
 
     public static function reValidate($host) { // 重新发起验证
-        $info = Stoarge::getInfo($host);
+        $info = Storage::getInfo($host);
         if ($info['status'] === 'issued') {
-            Output::line('This has been issued succeed.');
+            Output::line('This site has been successfully issued.');
             return;
         }
         if (!self::preCheck($info['domains'])) {
@@ -493,8 +493,7 @@ class Certificate {
             return;
         }
         $status = Encryption365::certReValidation($info['vendorId']);
-        var_dump($status);
-        if ($status['result'] !== "success") {
+        if ($status['status'] !== "success") {
             Output::str('Fail to revalidate certificate => ');
             Output::line($status['message'], 'red');
             return;
@@ -505,7 +504,7 @@ class Certificate {
     }
 
     public static function renewCert($host) { // 更新证书
-        $info = Stoarge::getInfo($host);
+        $info = Storage::getInfo($host);
         if ($info['status'] !== 'issued') {
             Output::line('This site has never been issued.');
             return;
@@ -531,6 +530,8 @@ class Certificate {
         }
         $info['status'] = 'issuing';
         $info['vendorId'] = $vendorId;
+        unset($info['createTime']);
+        unset($info['expireTime']);
         Storage::setInfo($host, $info); 
         Output::str('Vendor id: ');
         Output::str($vendorId . PHP_EOL, 'sky-blue');
@@ -641,4 +642,3 @@ class LoginCtr {
 }
 
 ?>
-
