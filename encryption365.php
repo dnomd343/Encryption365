@@ -144,11 +144,33 @@ class Storage {
     }
 
     public static function getHostList() { // 获取站点列表
-        // working
+        $file = self::$workDir . '/site.json';
+        if (!is_file($file)) {
+            file_put_contents($file, '[]');
+            return array();
+        }
+        return json_decode(file_get_contents($file), true);
     }
 
-    public static function delHost() { // 删除一个站点
-        // working
+    public static function setHostList($hosts) { // 写入站点列表
+        file_put_contents(self::$workDir . '/site.json', json_encode($hosts));
+    }
+
+    public static function addHost($host) { // 新增一个站点
+        self::setHostList(array_merge(
+            self::getHostList(), array($host)
+        ));
+    }
+
+    public static function delHost($host) { // 删除一个站点
+        if (!self::isHost($host)) { return; }
+        $list = array_flip(self::getHostList());
+        unset($list[$host]);
+        self::setHostList(array_values(array_flip($list)));
+    }
+
+    public static function isHost($host) { // 检查站点是否存在
+        return in_array($host, self::getHostList());
     }
 
     private static function setHostConfig($host, $file, $content) { // 写入站点文件
@@ -638,6 +660,32 @@ class LoginCtr {
         Output::line('Account status: ' . $result['status']);
         Output::line('Login time: ' . $result['created_at']);
         Storage::setClientInfo($email, $result['client_id'], $result['access_token']);
+    }
+}
+
+class issueCtr {
+    public static function issue($productId, $domains, $isEcc) { // 证书签发
+        Certificate::createNewOrder($productId, $domains, $isEcc);
+    }
+
+    private static function getProductId() { // 获取免费证书产品ID
+        $products = Encryption365::getProducts();
+        if (count($products) === 0) {
+            Output::line('Can\'t find any available products.', 'red');
+            return;
+        }
+        foreach ($products as $productId => $product) {
+            if (strpos($product['title'], '免费') !== false) {
+                return (string)$productId;
+            }
+        }
+        Output::line('We have some trouble, please select the product ID of free certificate manually.', 'yellow');
+        foreach ($products as $productId => $product) {
+            Output::str('Product ID: ' . $productId . ' => ', 'sky-blue');
+            Output::line($product['title'] . ' ' . $product['class'] . ' ' . $product['useage'] . ' ' . $product['term'], 'sky-blue');
+        }
+        Output::str('Product ID: ');
+        return trim(fgets(STDIN));
     }
 }
 
