@@ -680,7 +680,7 @@ class listCtr {
     public static function list() { // 列出所有证书
         $list = Storage::getHostList();
         if (count($list) === 0) {
-            Output::line('There are not any host yet.');
+            Output::line('There are not any host yet.', 'yellow');
             return;
         }
         Output::line("Host\t\tID\tDomains\t\t\tCreate Time\t\tExpire Time");
@@ -699,17 +699,17 @@ class listCtr {
 class issueCtr {
     public static function entry($params) {
         if (count($params) === 0) {
-            Output::line('You must specify encryption method.');
+            Output::line('You must specify encryption method.', 'red');
             return;
         }
         if ($params[0] === 'ECC') { $isEcc = true; }
         if ($params[0] === 'RSA') { $isEcc = false; }
         if (!isset($isEcc)) {
-            Output::line('You must specify RSA or ECC.');
+            Output::line('You must specify RSA or ECC.', 'red');
             return;
         }
         if (count($params) === 1) {
-            Output::line('You must specify at least one IP or domain name.');
+            Output::line('You must specify at least one IP or domain name.', 'red');
             return;
         }
         unset($params[0]);
@@ -723,7 +723,7 @@ class issueCtr {
         }
         $productId = self::getProductId();
         if (!is_numeric($productId)) {
-            Output::line('Illegal product ID.');
+            Output::line('Illegal product ID.', 'red');
             return;
         }
         Certificate::createNewOrder($productId, $domains, $isEcc);
@@ -758,6 +758,34 @@ class issueCtr {
         }
         Output::str('Product ID: ');
         return trim(fgets(STDIN));
+    }
+}
+
+class ReverifyCtr {
+    public static function entry($params) {
+        if (count($params) === 0) {
+            Output::line('Host must be specified.', 'red');
+            return;
+        }
+        if (count($params) > 1) {
+            Output::line('Too many parameters to reverify command.', 'red');
+            return;
+        }
+        Certificate::reValidate($params[0]);
+    }
+}
+
+class RenewCtr {
+    public static function entry($params) {
+        if (count($params) === 0) {
+            Output::line('Host must be specified.', 'red');
+            return;
+        }
+        if (count($params) > 1) {
+            Output::line('Too many parameters to reverify command.', 'red');
+            return;
+        }
+        Certificate::renewCert($params[0]);
     }
 }
 
@@ -797,6 +825,12 @@ function main($argv) { // 脚本入口
             break;
         case 'issue':
             IssueCtr::entry($params);
+            break;
+        case 'reverify':
+            ReverifyCtr::entry($params);
+            break;
+        case 'renew':
+            RenewCtr::entry($params);
             break;
         default:
             echo 'Unknow command, please use "encryption365 help" to show the usage.' . PHP_EOL;
