@@ -617,7 +617,7 @@ class RegistCtr {
         Output::line('Use "encryption365 login" command to login.');
     }
 
-    public static function regist($email, $passwd, $code, $name, $idNum, $phone) { // 发起注册
+    private static function regist($email, $passwd, $code, $name, $idNum, $phone) { // 发起注册
         $result = Encryption365::accountRegister(array(
             'email' => $email,
             'password' => $passwd,
@@ -638,6 +638,19 @@ class RegistCtr {
 }
 
 class LoginCtr {
+    public static function entry($params) {
+        switch (count($params)) {
+            case '0':
+                self::interact();
+                break;
+            case '2':
+                self::login($params[0], $params[1]);
+                break;
+            default:
+                Output::line('Unknow params');
+        }
+    }
+
     public static function interact() { // 登录交互
         Output::line('This process need a Trustocean account, if you don\'t have it currently, there are two methods:');
         Output::line('1. Manually register at "https://page.trustocean.com/websecurity/welcome"');
@@ -663,9 +676,68 @@ class LoginCtr {
     }
 }
 
+class listCtr {
+    public static function list() { // 列出所有证书
+        $list = Storage::getHostList();
+        if (count($list) === 0) {
+            Output::line('There are not any host yet.');
+            return;
+        }
+        Output::line("Host\t\tID\tDomains\t\t\tCreate Time\t\tExpire Time");
+        foreach ($list as $host) {
+            $info = Storage::getInfo($host);
+            Output::str($info['host'] . "\t", 'yellow');
+            Output::str($info['vendorId'] . "\t", 'sky-blue');
+            Output::str(implode('/', $info['domains']) . "\t", 'purple');
+            Output::str($info['createTime'] . "\t", 'blue');
+            Output::str($info['expireTime'] . "\t", 'blue');
+            Output::line('');
+        }
+    }
+}
+
 class issueCtr {
-    public static function issue($productId, $domains, $isEcc) { // 证书签发
+    public static function entry($params) {
+        if (count($params) === 0) {
+            Output::line('You must specify encryption method.');
+            return;
+        }
+        if ($params[0] === 'ECC') { $isEcc = true; }
+        if ($params[0] === 'RSA') { $isEcc = false; }
+        if (!isset($isEcc)) {
+            Output::line('You must specify RSA or ECC.');
+            return;
+        }
+        if (count($params) === 1) {
+            Output::line('You must specify at least one IP or domain name.');
+            return;
+        }
+        unset($params[0]);
+        $domains = array_values($params);
+        foreach ($domains as $host) {
+            if (!self::isHost($host)) {
+                Output::str($host, 'red');
+                Output::line(' is not a legel IP or domain name.');
+                return;
+            }
+        }
+        $productId = self::getProductId();
+        if (!is_numeric($productId)) {
+            Output::line('Illegal product ID.');
+            return;
+        }
         Certificate::createNewOrder($productId, $domains, $isEcc);
+    }
+
+    private function isHost($host) { // 判断host是否合法
+        preg_match('/^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$/', $host, $match);
+        if (count($match) !== 0) {
+            if (!is_numeric(substr($host, -1))) { return true; }
+        }
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return true;
+        }
+        return false;
     }
 
     private static function getProductId() { // 获取免费证书产品ID
@@ -679,7 +751,7 @@ class issueCtr {
                 return (string)$productId;
             }
         }
-        Output::line('We have some trouble, please select the product ID of free certificate manually.', 'yellow');
+        Output::line('We\'ve encountered an error while processing your request, you might want to select the free certificate\'s product ID manually.', 'yellow');
         foreach ($products as $productId => $product) {
             Output::str('Product ID: ' . $productId . ' => ', 'sky-blue');
             Output::line($product['title'] . ' ' . $product['class'] . ' ' . $product['useage'] . ' ' . $product['term'], 'sky-blue');
@@ -688,5 +760,49 @@ class issueCtr {
         return trim(fgets(STDIN));
     }
 }
+
+function noParam($params) { // 命令不含参数情况
+    if (count($params) === 0) { return; }
+    echo 'Unknow params' . PHP_EOL;
+    exit;
+}
+
+function showHelp() { // 显示帮助信息
+    echo 'help message';
+}
+
+function main($argv) { // 脚本入口
+    unset($argv[0]);
+    if (count($argv) === 0) {
+        $argv[] = 'help';
+    }
+    $command = $argv[1];
+    unset($argv[1]);
+    $params = array_values($argv);
+    switch ($command) {
+        case 'help':
+            noParam($params);
+            showHelp();
+            break;
+        case 'regist':
+            noParam($params);
+            RegistCtr::interact();
+            break;
+        case 'login':
+            LoginCtr::entry($params);
+            break;
+        case 'list':
+            noParam($params);
+            ListCtr::list();
+            break;
+        case 'issue':
+            IssueCtr::entry($params);
+            break;
+        default:
+            echo 'Unknow command, please use "encryption365 help" to show the usage.' . PHP_EOL;
+    }
+}
+
+main($argv);
 
 ?>
