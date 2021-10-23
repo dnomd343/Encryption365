@@ -448,8 +448,8 @@ class Certificate {
 
     public static function saveCert($host, $certInfo) {
         $info = Storage::getInfo($host);
-        $cert = $certInfo['cert_code'];
-        $caCert = $certInfo['ca_code'];
+        $cert = trim($certInfo['cert_code']);
+        $caCert = trim($certInfo['ca_code']);
         $startTime = $certInfo['created_at'];
         $endTime = $certInfo['expire_at'];
         $info['status'] = 'issued';
@@ -879,7 +879,7 @@ class InstallCtr {
             if (isset($info[$field]) && $info[$field] !== '') {
                 switch ($field) {
                     case 'fullchain':
-                        $content = Storage::getCert($host) . Storage::getCaCert($host);
+                        $content = Storage::getCert($host) . PHP_EOL . Storage::getCaCert($host);
                         break;
                     case 'key':
                         $content = Storage::getPrivkey($host);
