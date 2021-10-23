@@ -863,6 +863,24 @@ class InstallCtr {
     }
 }
 
+class AutorenewCtr {
+    public static function renew() {
+        $list = Storage::getHostList();
+        foreach ($list as $host) {
+            $info = Storage::getInfo($host);
+            if ($info['status'] !== 'issued') { continue; }
+            $expire = strtotime($info['expireTime']);
+            $now = strtotime(date('Y-m-d H:i:s'));
+            $remainDays = intval(($expire - $now) / 3600 / 24);
+            if ($remainDays >= 10) { continue; }
+            Output::str('Renew certificate for ');
+            Output::line($host, 'yellow');
+            Certificate::renewCert($host);
+            InstallCtr::install($host);
+        }
+    }
+}
+
 function noParam($params) { // 命令不含参数情况
     if (count($params) === 0) { return; }
     echo 'Unknow params' . PHP_EOL;
@@ -908,6 +926,10 @@ function main($argv) { // 脚本入口
             break;
         case 'install':
             InstallCtr::entry($params);
+            break;
+        case 'autorenew':
+            noParam($params);
+            AutorenewCtr::renew();
             break;
         default:
             echo 'Unknow command, please use "encryption365 help" to show the usage.' . PHP_EOL;
