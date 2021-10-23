@@ -125,12 +125,17 @@ class Storage {
     }
 
     public static function getClientInfo() { // 本地文件读取客户端凭证
-        $raw = explode(PHP_EOL, file_get_contents(self::$workDir . '/client.conf'));
+        $file = self::$workDir . '/client.conf';
+        if (!is_file($file)) {
+            file_put_contents($file, '');
+            return array();
+        }
+        $raw = explode(PHP_EOL, file_get_contents($file));
         $info = array();
         foreach ($raw as $row) {
             $row = explode('=', $row);
             if (count($row) !== 2) { continue; }
-            $info[trim($row[0])] = trim($row[1]);         
+            $info[trim($row[0])] = trim($row[1]);
         }
         return $info;
     }
@@ -257,10 +262,12 @@ class Encryption365 {
     private static function getClientInfo() { // 获取客户端ID和token
         $info = Storage::getClientInfo();
         if (!isset($info['client_id'])) {
-            die('Fail to get client_id');
+            Output::line('Fail to get client ID, you must login first.', 'red');
+            die();
         }
         if (!isset($info['access_token'])) {
-            die('Fail to get access_token');
+            Output::line('Fail to get access token, you must login first.', 'red');
+            die();
         }
         return array(
             'client_id' => $info['client_id'],
@@ -411,9 +418,9 @@ class Certificate {
     }
 
     private static function waitIssued($vendorId) { // 等待证书签发
-        $maxTime = 40;
+        $maxTime = 60;
         $interval = 30;
-        for ($i = 0; $i < 20; $i++) {
+        for ($i = 0; $i < $maxTime; $i++) {
             Output::line('Let\'s wait ' . $interval . ' seconds and query certificate status...');
             sleep($interval);
             $detail = Encryption365::certDetails($vendorId);
