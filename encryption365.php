@@ -411,7 +411,7 @@ class Certificate {
     }
 
     private static function waitIssued($vendorId) { // 等待证书签发
-        $maxTime = 20;
+        $maxTime = 40;
         $interval = 30;
         for ($i = 0; $i < 20; $i++) {
             Output::line('Let\'s wait ' . $interval . ' seconds and query certificate status...');
@@ -420,7 +420,7 @@ class Certificate {
             if ($detail['result'] !== "success") {
                 Output::str('Fail to get certificate details => ');
                 Output::line($detail['message'], 'red');
-                continue;
+                break;
             }
             if ($detail['cert_status'] === 'issued_active') {
                 Output::line('Certificate issue success', 'green');
@@ -442,6 +442,12 @@ class Certificate {
             Output::line('Issue certificate time out, you may validate again...', 'red');
             return false;
         }
+        self::saveCert($host, $certInfo);
+        return true;
+    }
+
+    public static function saveCert($host, $certInfo) {
+        $info = Storage::getInfo($host);
         $cert = $certInfo['cert_code'];
         $caCert = $certInfo['ca_code'];
         $startTime = $certInfo['created_at'];
@@ -460,7 +466,6 @@ class Certificate {
         Output::line($startTime, 'sky-blue');
         Output::str('Expire time: ');
         Output::line($endTime, 'sky-blue');
-        return true;
     }
 
     public static function createCert($productId, $domains, $isEcc = false) { // 创建新的证书订单
@@ -480,7 +485,8 @@ class Certificate {
         }
         $vendorId = (string)$orderRlt['trustocean_id'];
         foreach ($orderRlt['dcv_info'] as $domain => $dcvInfo) {
-            $verifyLink = $dcvInfo['http_verifylink'];
+            preg_match('/^http:\/\/[\S]*?(\/[\S]+.txt)/', $dcvInfo['http_verifylink'], $match);
+            $verifyLink = 'http://{domain}' . $match[1];
             $verifyContent = $dcvInfo['http_filecontent'];
             break;
         }
@@ -546,7 +552,8 @@ class Certificate {
         }
         $vendorId = (string)$orderRlt['trustocean_id'];
         foreach ($orderRlt['dcv_info'] as $domain => $dcvInfo) {
-            $verifyLink = $dcvInfo['http_verifylink'];
+            preg_match('/^http:\/\/[\S]*?(\/[\S]+.txt)/', $dcvInfo['http_verifylink'], $match);
+            $verifyLink = 'http://{domain}' . $match[1];
             $verifyContent = $dcvInfo['http_filecontent'];
             break;
         }
@@ -666,17 +673,17 @@ class LoginCtr {
         $result = Encryption365::clientLogin($email, $passwd);
         if ($result['result'] !== 'success') {
             Output::str('Fail to login: ');
-            Output::str($result['message'], 'red');
+            Output::line($result['message'], 'red');
             return;
         }
-        Output::str('Login success' . PHP_EOL, 'green');
+        Output::line('Login success', 'green');
         Output::line('Account status: ' . $result['status']);
         Output::line('Login time: ' . $result['created_at']);
         Storage::setClientInfo($email, $result['client_id'], $result['access_token']);
     }
 }
 
-class listCtr {
+class ListCtr {
     public static function list() { // 列出所有证书
         $list = Storage::getHostList();
         if (count($list) === 0) {
@@ -689,14 +696,22 @@ class listCtr {
             Output::str($info['host'] . "\t", 'yellow');
             Output::str($info['vendorId'] . "\t", 'sky-blue');
             Output::str(implode('/', $info['domains']) . "\t", 'purple');
-            Output::str($info['createTime'] . "\t", 'blue');
-            Output::str($info['expireTime'] . "\t", 'blue');
+            if (isset($info['createTime'])) {
+                Output::str($info['createTime'] . "\t", 'blue');
+            } else {
+                Output::str('-' . "\t\t", 'blue');
+            }
+            if (isset($info['expireTime'])) {
+                Output::str($info['expireTime'] . "\t", 'blue');
+            } else {
+                Output::str('-' . "\t\t", 'blue');
+            }
             Output::line('');
         }
     }
 }
 
-class issueCtr {
+class IssueCtr {
     public static function entry($params) {
         if (count($params) === 0) {
             Output::line('You must specify encryption method.', 'red');
@@ -726,7 +741,8 @@ class issueCtr {
             Output::line('Illegal product ID.', 'red');
             return;
         }
-        Certificate::createNewOrder($productId, $domains, $isEcc);
+        Storage::addHost($domains[0]);
+        Certificate::createCert($productId, $domains, $isEcc);
     }
 
     private function isHost($host) { // 判断host是否合法
@@ -772,6 +788,31 @@ class ReverifyCtr {
             return;
         }
         Certificate::reValidate($params[0]);
+    }
+}
+
+class FlashCtr {
+    public static function entry($params) {
+        if (count($params) === 0) {
+            Output::line('Host must be specified.', 'red');
+            return;
+        }
+        if (count($params) > 1) {
+            Output::line('Too many parameters to flash certificate.', 'red');
+            return;
+        }
+        $host = $params[0];
+        $info = Storage::getInfo($host);
+        $detail = Encryption365::certDetails($info['vendorId']);
+        if ($detail['result'] !== "success") {
+            Output::str('Fail to flash certificate => ');
+            Output::line($detail['message'], 'red');
+        }
+        Output::str('Certificate status: ');
+        Output::line($detail['cert_status'], 'sky-blue');
+        if ($detail['cert_status'] === 'issued_active') {
+            Certificate::saveCert($host, $detail);
+        }
     }
 }
 
@@ -920,6 +961,9 @@ function main($argv) { // 脚本入口
             break;
         case 'reverify':
             ReverifyCtr::entry($params);
+            break;
+        case 'flash':
+            FlashCtr::entry($params);
             break;
         case 'renew':
             RenewCtr::entry($params);
