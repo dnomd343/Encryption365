@@ -929,7 +929,63 @@ function noParam($params) { // 命令不含参数情况
 }
 
 function showHelp() { // 显示帮助信息
-    echo 'help message';
+    echo <<<EOF
+
+A tool to automatically apply and manage for Encryption365 free certificate.
+
+Source code repository: https://github.com/dnomd343/Encryption365.git
+
+Usage: encryption365 COMMAND [OPTIONS]
+
+  help => Output this help information.
+
+  regist => Register Trustocean account in command line.
+
+  login => Login your Trustocean account.
+
+  list => List all sites.
+
+  issue METHOD DOMAIN_1 DOMAIN_2 ... => Try to apply for TLS certificate.
+
+    METHOD => ECC or RSA (ECC recommended)
+
+    DOMAIN_x => Domain name or IP address included in the certificate.
+                (The first one will be the common name)
+
+  reverify HOST => Re-apply for verification.
+
+  flash HOST => Check the site status and download the certificate again.
+
+  renew HOST => Renew a certificate that is nearly expire.
+
+  install HOST [fullchain=...] [key=...] [cert=...] [ca=...] [cmd=...]
+  => Install the TLS certificate.
+
+    fullchain => Full certificate chain.
+
+    key => Private key of certificate.
+
+    cert => Certificate
+
+    ca => CA certificate
+
+    cmd => Running command after installation
+
+  autorenew => Check all sites and update certificates that are about to expire.
+
+Examples:
+
+> encryption365 login dnomd343@163.com {password}
+
+> encryption365 issue ECC 8.210.148.24 dns.343.re
+
+> encryption365 install 8.210.148.24 \
+    fullchain=/etc/ssl/certs/8.210.148.24/fullchain.pem \
+    key=/etc/ssl/certs/8.210.148.24/privkey.pem \
+    cmd="systemctl force-reload nginx"
+
+
+EOF;
 }
 
 function main($argv) { // 脚本入口
