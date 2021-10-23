@@ -478,7 +478,7 @@ class Certificate {
             Output::line($orderRlt['message'], 'red');
             return;
         }
-        $vendorId = $orderRlt['trustocean_id'];
+        $vendorId = (string)$orderRlt['trustocean_id'];
         foreach ($orderRlt['dcv_info'] as $domain => $dcvInfo) {
             $verifyLink = $dcvInfo['http_verifylink'];
             $verifyContent = $dcvInfo['http_filecontent'];
@@ -528,7 +528,7 @@ class Certificate {
     public static function renewCert($host) { // 更新证书
         $info = Storage::getInfo($host);
         if ($info['status'] !== 'issued') {
-            Output::line('This site has never been issued.');
+            Output::line('This site has never been issued.', 'red');
             return;
         }
         if (!self::preCheck($info['domains'])) {
@@ -544,7 +544,7 @@ class Certificate {
             Output::line($orderRlt['message'], 'red');
             return;
         }
-        $vendorId = $orderRlt['trustocean_id'];
+        $vendorId = (string)$orderRlt['trustocean_id'];
         foreach ($orderRlt['dcv_info'] as $domain => $dcvInfo) {
             $verifyLink = $dcvInfo['http_verifylink'];
             $verifyContent = $dcvInfo['http_filecontent'];
@@ -789,6 +789,80 @@ class RenewCtr {
     }
 }
 
+class InstallCtr {
+    public static function entry($params) {
+        if (count($params) === 0) {
+            Output::line('Host must be specified.', 'red');
+            return;
+        }
+        if (count($params) === 1) {
+            Output::line('You must provide at least one parameter.', 'red');
+            return;
+        }
+        $host = $params[0];
+        unset($params[0]);
+        $params = array_values($params);
+        foreach ($params as $field) {
+            preg_match('/^([a-zA-Z]+)=([\s\S]*)$/', $field, $match);
+            if (count($match) !== 3) {
+                Output::str($field, 'red');
+                Output::line(' is illegal.');
+                return;
+            }
+            $match[1] = strtolower($match[1]);
+            if ($match[1] !== 'fullchain' && $match[1] !== 'key' && $match[1] !== 'cert' && $match[1] !== 'ca' && $match[1] !== 'cmd') {
+                Output::str($match[1], 'red');
+                Output::line(' is not a legal option.');
+                return;
+            }
+            $option[$match[1]] = trim($match[2]);
+        }
+        if (!Storage::isHost($host)) {
+            Output::str($host, 'red');
+            Output::line(' is not exist.');
+            return;
+        }
+        $info = Storage::getInfo($host);
+        Storage::setInfo($host, array_merge($info, $option));
+        self::install($host);
+    }
+
+    public static function install($host) { // 安装证书
+        $info = Storage::getInfo($host);
+        if ($info['status'] !== 'issued') {
+            Output::line('This site has never been issued.', 'red');
+            return;
+        }
+        $fields = array('fullchain', 'key', 'cert', 'ca');
+        foreach ($fields as $field) {
+            if (isset($info[$field]) && $info[$field] !== '') {
+                switch ($field) {
+                    case 'fullchain':
+                        $content = Storage::getCert($host) . Storage::getCaCert($host);
+                        break;
+                    case 'key':
+                        $content = Storage::getPrivkey($host);
+                        break;
+                    case 'cert':
+                        $content = Storage::getCert($host);
+                        break;
+                    case 'ca':
+                        $content = Storage::getCaCert($host);
+                        break;
+                }
+                file_put_contents($info[$field], $content);
+                if ($field === 'key') {
+                    chmod($info[$field], 0600);
+                }
+            }
+        }
+        if (isset($info['cmd']) && $info['cmd'] !== '') {
+            shell_exec($info['cmd']);
+        }
+        Output::line('Install OK', 'green');
+    }
+}
+
 function noParam($params) { // 命令不含参数情况
     if (count($params) === 0) { return; }
     echo 'Unknow params' . PHP_EOL;
@@ -831,6 +905,9 @@ function main($argv) { // 脚本入口
             break;
         case 'renew':
             RenewCtr::entry($params);
+            break;
+        case 'install':
+            InstallCtr::entry($params);
             break;
         default:
             echo 'Unknow command, please use "encryption365 help" to show the usage.' . PHP_EOL;
