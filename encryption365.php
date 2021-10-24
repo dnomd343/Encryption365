@@ -114,7 +114,7 @@ class Storage {
     private static $workDir = '/etc/encryption365';
 
     public static function getGB2260() { // 读取GB2260数据
-        return json_decode(file_get_contents(self::$workDir . 'GB2260.json'), true);
+        return json_decode(file_get_contents(self::$workDir . '/GB2260.json'), true);
     }
 
     public static function setClientInfo($email, $clientId, $token) { // 客户端凭证写入到本地文件
@@ -627,8 +627,9 @@ class RegistCtr {
         }
         Output::str('It seems that all the information is complete, press ENTER to register your account...');
         fgets(STDIN);
-        self::regist($email, $passwd, $code, $fake['name'], $fake['idNum'], $fake['phone']);
-        Output::line('Use "encryption365 login" command to login.');
+        if (self::regist($email, $passwd, $code, $fake['name'], $fake['idNum'], $fake['phone'])) {
+            Output::line('Use "encryption365 login" command to login.');
+        }
     }
 
     private static function regist($email, $passwd, $code, $name, $idNum, $phone) { // 发起注册
@@ -644,10 +645,11 @@ class RegistCtr {
         ));
         if ($result['result'] !== 'success') {
             Output::str('Fail to regist: ');
-            Output::str($result['message'], 'red');
-            return;
+            Output::line($result['message'], 'red');
+            return false;
         }
-        Output::str('Regist success' . PHP_EOL, 'green');
+        Output::line('Regist success', 'green');
+        return true;
     }
 }
 

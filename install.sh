@@ -28,7 +28,8 @@ echo -e "\033[32m OK\033[0m\n"
 echo -e "\033[33mPlease ensure that the following modules are exist\033[0m"
 echo -e "\033[36mphp / php-cli / php-fpm / php-json / php-openssl / php-mbstring\033[0m\n"
 
-if [ ! -n `crontab -l | grep -o encryption365` ]; then
+isCrond=`crontab -l | grep -o encryption365`
+if [ ! -n "$isCrond" ]; then
   echo "0 * * * * encryption365 autorenew" >> /var/spool/cron/root
 fi
 
