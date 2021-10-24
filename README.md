@@ -1,6 +1,6 @@
 ## 快速开始
 
-Encryption365 是由 [Trust Ocean](https://www.trustocean.cn/) 提供的一款TLS证书，可申请免费的IP或域名证书，但官方只提供了[宝塔插件](https://github.com/londry/Encryption365_Baota)以供使用，本工具基于该插件API重构，支持证书的自动化注册、登录、申请、安装、管理与续签。
+Encryption365 是由 [Trust Ocean](https://www.trustocean.cn/) 提供的一款TLS证书，可申请免费的IP或域名证书，但官方只提供了[宝塔插件](https://github.com/londry/Encryption365_Baota)以供使用，本工具基于该插件API重构，支持证书的自动化注册、登录、申请、安装、管理与续签，使用逻辑类似于 [acme.sh](https://github.com/acmesh-official/acme.sh) 证书工具。
 
 ### 安装命令
 
@@ -163,3 +163,9 @@ Install OK
 **自动续签**
 
 执行 `encryption365 autorenew` 命令将会检查全部站点，如果发现证书将于十天后过期，将自动执行续签工作，该命令无需手动执行，安装时将会被自动添加至系统crontab定时任务中。
+
+### 许可证
+
+该工具仅为个人使用，未在多种环境下测试，可能存在若干问题，证书使用请遵守环智中诚相关规定。
+
+MIT ©2021 [@dnomd343](https://github.com/dnomd343)
